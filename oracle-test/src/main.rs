@@ -1,4 +1,4 @@
-use oracle::Connection;
+use oracle::{Connection, Statement, sql_type::Timestamp};
 
 fn main() -> Result<(), anyhow::Error> {
     const MAX_ROWS: usize = 20;
@@ -30,6 +30,54 @@ fn main() -> Result<(), anyhow::Error> {
     let (id, name, price) = row.get_as::<(i32, String, Option<f32>)>()?;
     println!("\nProduct 15:");
     println!("{id}: {name} - {}", price.unwrap_or(0.0));
+
+    {
+        println!("\nAGAIN Getting {MAX_ROWS} customers:");
+        let mut stmt = connection
+            .statement(sql_customer_list)
+            .tag("customer list")
+            .build()?;
+        for row in stmt.query_as::<(u32, String, String)>(&[])?.take(MAX_ROWS) {
+            if let Ok((id, email, fullname)) = row {
+                println!("{id}: {fullname} - {email}");
+            }
+        }
+        println!("\nAND AGAIN Getting {MAX_ROWS} customers:");
+        for row in stmt.query(&[])?.take(MAX_ROWS) {
+            let row = row?;
+            let (id, email, fullname) = row.get_as::<(u32, String, String)>()?;
+            println!("{id}: {fullname} - {email}");
+        }
+    }
+
+    println!("\n...AND AGAIN Getting {MAX_ROWS} customers:");
+    let mut stmt = connection.statement("").tag("customer list").build()?;
+    query_mr(&mut stmt, MAX_ROWS)?;
+    let sql_refunded_store_customer = "SELECT order_id, order_tms \
+                                     FROM co.orders \
+                                     WHERE order_status = 'REFUNDED' AND store_id = :store AND customer_id = :customer";
+    println!("\nCustomer orders refunded in store 1 for customer 99");
+    let mut stmt = connection
+        .statement(sql_refunded_store_customer)
+        .tag("refunds")
+        .build()?;
+    for row in stmt.query_named(&[("customer", &99), ("store", &1)])? {
+        let row = row?;
+        let (order_id, timestamp) = row.get_as::<(u32, Timestamp)>()?;
+        println!("{order_id} - {timestamp}");
+    }
+
+    Ok(())
+}
+
+fn query_mr(stmt: &mut Statement, n_rows: usize) -> Result<(), oracle::Error> {
+    for row in stmt.query(&[])?.take(n_rows) {
+        let row = row?;
+        let id: u32 = row.get(0)?;
+        let email: String = row.get(1)?;
+        let fullname: String = row.get(2)?;
+        println!("{id}: {fullname} - {email}");
+    }
 
     Ok(())
 }
