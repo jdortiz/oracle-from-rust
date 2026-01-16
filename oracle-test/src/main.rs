@@ -8,5 +8,9 @@ fn main() -> Result<(), anyhow::Error> {
     connection.ping()?;
     println!("Connected to the database.");
 
+    let row = connection.query_row("SELECT 'Hello Oracle!' FROM dual", &[])?;
+    let greeting: String = row.get(0)?;
+    println!("{greeting}");
+
     Ok(())
 }
