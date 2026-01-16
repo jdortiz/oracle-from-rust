@@ -1,4 +1,4 @@
-use oracle::{Connection, Statement};
+use oracle::{Connection, Statement, sql_type::Timestamp};
 
 fn main() -> Result<(), anyhow::Error> {
     const MAX_ROWS: usize = 20;
@@ -53,6 +53,19 @@ fn main() -> Result<(), anyhow::Error> {
     println!("\n...AND AGAIN Getting {MAX_ROWS} customers:");
     let mut stmt = connection.statement("").tag("customer list").build()?;
     query_mr(&mut stmt, MAX_ROWS)?;
+    let sql_refunded_store_customer = "SELECT order_id, order_tms \
+                                     FROM co.orders \
+                                     WHERE order_status = 'REFUNDED' AND store_id = :store AND customer_id = :customer";
+    println!("\nCustomer orders refunded in store 1 for customer 99");
+    let mut stmt = connection
+        .statement(sql_refunded_store_customer)
+        .tag("refunds")
+        .build()?;
+    for row in stmt.query_named(&[("customer", &99), ("store", &1)])? {
+        let row = row?;
+        let (order_id, timestamp) = row.get_as::<(u32, Timestamp)>()?;
+        println!("{order_id} - {timestamp}");
+    }
 
     Ok(())
 }
