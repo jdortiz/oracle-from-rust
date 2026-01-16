@@ -23,5 +23,13 @@ fn main() -> Result<(), anyhow::Error> {
         println!("{id}: {fullname} - {email}");
     }
 
+    let sql_product_with_id = "SELECT product_id, product_name, unit_price \
+                             FROM products \
+                             WHERE product_id = :1";
+    let row = connection.query_row(sql_product_with_id, &[&15])?;
+    let (id, name, price) = row.get_as::<(i32, String, Option<f32>)>()?;
+    println!("\nProduct 15:");
+    println!("{id}: {name} - {}", price.unwrap_or(0.0));
+
     Ok(())
 }
