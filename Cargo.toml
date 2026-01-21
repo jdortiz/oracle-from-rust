@@ -1,3 +1,3 @@
 [workspace]
-members = ["oracle-test"]
+members = ["oracle-test", "sibyl-test"]
 resolver = "3"
