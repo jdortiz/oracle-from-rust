@@ -1,5 +1,6 @@
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    const MAX_ROWS: usize = 20;
     println!("sibyl-test");
 
     let sibyl_env = sibyl::env()?;
@@ -17,6 +18,35 @@ async fn main() -> Result<(), anyhow::Error> {
         println!("{greeting}");
     } else {
         eprintln!("Greeting query failed.");
+    }
+
+    let sql_customer_list = "SELECT * FROM co.customers";
+    println!("Getting {MAX_ROWS} customers:");
+    let stmt = session.prepare(sql_customer_list).await?;
+    let rows = stmt.query(()).await?;
+    let mut i: usize = 0;
+    while i < MAX_ROWS
+        && let Some(row) = rows.next().await?
+    {
+        let id: u32 = row.get(0)?;
+        let email: String = row.get(1)?;
+        let fullname: String = row.get(2)?;
+        println!("{id}: {fullname} - {email}");
+        i += 1;
+    }
+
+    let sql_product_with_id = "SELECT product_id, product_name, unit_price \
+                             FROM products \
+                             WHERE product_id = :1";
+    let stmt = session.prepare(sql_product_with_id).await?;
+    if let Some(row) = stmt.query_single(15).await? {
+        let id: i32 = row.get(0)?;
+        let name: String = row.get(1)?;
+        let price: Option<f32> = row.get(2)?;
+        println!("\nProduct 15:");
+        println!("{id}: {name} - {}", price.unwrap_or(0.0));
+    } else {
+        eprintln!("Product query failed.");
     }
 
     Ok(())
