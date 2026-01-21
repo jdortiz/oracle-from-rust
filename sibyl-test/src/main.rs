@@ -1,4 +1,4 @@
-use sibyl::Statement;
+use sibyl::{Statement, Timestamp};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -71,6 +71,22 @@ async fn main() -> Result<(), anyhow::Error> {
     query_mr(&stmt_mr, MAX_ROWS).await?;
     println!("\n...AND AGAIN Getting {MAX_ROWS} customers:");
     query_mr(&stmt_mr, MAX_ROWS).await?;
+
+    let sql_refunded_store_customer = "SELECT order_id, order_tms \
+                                     FROM co.orders \
+                                     WHERE order_status = 'REFUNDED' AND store_id = :store AND customer_id = :customer";
+    println!("\nCustomer orders refunded in store 1 for customer 99");
+    let stmt = session.prepare(sql_refunded_store_customer).await?;
+    let rows = stmt.query((("customer", 99), ("store", &1))).await?;
+    let mut i: usize = 0;
+    while i < MAX_ROWS
+        && let Some(row) = rows.next().await?
+    {
+        let order_id: u32 = row.get(0)?;
+        let timestamp: Timestamp = row.get(1)?;
+        println!("{order_id} - {timestamp:?}");
+        i += 1;
+    }
 
     Ok(())
 }
