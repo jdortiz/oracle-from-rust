@@ -35,5 +35,19 @@ async fn main() -> Result<(), anyhow::Error> {
         i += 1;
     }
 
+    let sql_product_with_id = "SELECT product_id, product_name, unit_price \
+                             FROM products \
+                             WHERE product_id = :1";
+    let stmt = session.prepare(sql_product_with_id).await?;
+    if let Some(row) = stmt.query_single(15).await? {
+        let id: i32 = row.get(0)?;
+        let name: String = row.get(1)?;
+        let price: Option<f32> = row.get(2)?;
+        println!("\nProduct 15:");
+        println!("{id}: {name} - {}", price.unwrap_or(0.0));
+    } else {
+        eprintln!("Product query failed.");
+    }
+
     Ok(())
 }
