@@ -1,3 +1,5 @@
+use sibyl::{Statement, Timestamp};
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     const MAX_ROWS: usize = 20;
@@ -47,6 +49,60 @@ async fn main() -> Result<(), anyhow::Error> {
         println!("{id}: {name} - {}", price.unwrap_or(0.0));
     } else {
         eprintln!("Product query failed.");
+    }
+
+    println!("\nAGAIN Getting {MAX_ROWS} customers:");
+
+    let stmt_mr = session.prepare(sql_customer_list).await?;
+    let rows = stmt_mr.query(()).await?;
+    let mut i: usize = 0;
+    while i < MAX_ROWS
+        && let Some(row) = rows.next().await?
+    {
+        let id: u32 = row.get(0)?;
+        let email: String = row.get(1)?;
+        let fullname: String = row.get(2)?;
+
+        println!("{id}: {fullname} - {email}");
+        i += 1;
+    }
+
+    println!("\nAND AGAIN Getting {MAX_ROWS} customers:");
+    query_mr(&stmt_mr, MAX_ROWS).await?;
+    println!("\n...AND AGAIN Getting {MAX_ROWS} customers:");
+    query_mr(&stmt_mr, MAX_ROWS).await?;
+
+    let sql_refunded_store_customer = "SELECT order_id, order_tms \
+                                     FROM co.orders \
+                                     WHERE order_status = 'REFUNDED' AND store_id = :store AND customer_id = :customer";
+    println!("\nCustomer orders refunded in store 1 for customer 99");
+    let stmt = session.prepare(sql_refunded_store_customer).await?;
+    let rows = stmt.query((("customer", 99), ("store", &1))).await?;
+    let mut i: usize = 0;
+    while i < MAX_ROWS
+        && let Some(row) = rows.next().await?
+    {
+        let order_id: u32 = row.get(0)?;
+        let timestamp: Timestamp = row.get(1)?;
+        println!("{order_id} - {timestamp:?}");
+        i += 1;
+    }
+
+    Ok(())
+}
+
+async fn query_mr(stmt: &Statement<'_>, n_rows: usize) -> Result<(), sibyl::Error> {
+    let rows = stmt.query(()).await?;
+    let mut i: usize = 0;
+    while i < n_rows
+        && let Some(row) = rows.next().await?
+    {
+        let id: u32 = row.get(0)?;
+        let email: String = row.get(1)?;
+        let fullname: String = row.get(2)?;
+
+        println!("{id}: {fullname} - {email}");
+        i += 1;
     }
 
     Ok(())
