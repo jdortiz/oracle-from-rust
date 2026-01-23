@@ -131,6 +131,19 @@ fn main() -> Result<(), anyhow::Error> {
     }
     connection.commit()?;
 
+    let sql_query_vec = "SELECT prod_desc FROM embeddings \
+                       ORDER BY VECTOR_DISTANCE(emb_vector, :1) \
+                       FETCH FIRST 3 ROWS ONLY";
+    let vector = vec![0.8f32, 0.1, 0.2, 0.1, 0.1];
+    let vector_str = format!("{vector:?}");
+    println!("Similar products to vector: '{vector_str}'");
+    let mut stmt = connection.statement(sql_query_vec).build()?;
+    for row in stmt.query(&[&vector_str])? {
+        let row = row?;
+        let product_name: String = row.get(0)?;
+        println!("- {product_name}");
+    }
+
     println!("Droping embeddings table.");
     let ddl_drop_table = "DROP TABLE embeddings";
     let mut stmt = connection.statement(ddl_drop_table).build()?;
