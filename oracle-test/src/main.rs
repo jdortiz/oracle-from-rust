@@ -81,6 +81,11 @@ fn main() -> Result<(), anyhow::Error> {
     println!("\nNew product {new_product_id} created");
     connection.commit()?;
 
+    let sql_delete = "DELETE FROM products where product_id = :1";
+    let mut stmt = connection.statement(sql_delete).build()?;
+    stmt.execute(&[&new_product_id])?;
+    connection.commit()?;
+
     Ok(())
 }
 
