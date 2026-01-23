@@ -99,6 +99,23 @@ fn main() -> Result<(), anyhow::Error> {
         println!("\nvector_memory_size: {value}");
     }
 
+    println!("\nCreating embeddings table.");
+    let ddl_create_table = "CREATE TABLE embeddings (\
+                          item_id NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1000 INCREMENT BY 1) PRIMARY KEY, \
+                          prod_desc VARCHAR2(100), \
+                          emb_vector VECTOR(5, FLOAT32)\
+                          )";
+    let mut stmt = connection.statement(ddl_create_table).build()?;
+    stmt.execute(&[])?;
+    println!("Creating embeddings index.");
+    let ddl_create_idx = "CREATE VECTOR INDEX embeddings_vector_index \
+                        ON embeddings (emb_vector) \
+                        ORGANIZATION INMEMORY NEIGHBOR GRAPH \
+                        DISTANCE COSINE \
+                        WITH TARGET ACCURACY 95";
+    let mut stmt = connection.statement(ddl_create_idx).build()?;
+    stmt.execute(&[])?;
+
     Ok(())
 }
 
