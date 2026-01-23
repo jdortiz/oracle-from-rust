@@ -116,6 +116,34 @@ fn main() -> Result<(), anyhow::Error> {
     let mut stmt = connection.statement(ddl_create_idx).build()?;
     stmt.execute(&[])?;
 
+    let sql_insert_vec = "INSERT INTO embeddings (prod_desc, emb_vector) VALUES (:1, :2)";
+    let vec_data = vec![
+        ("Dark coat", vec![0.1f32, 0.2, 0.9, 0.1, 0.3]),
+        ("Nice wearable", vec![0.7f32, 0.2, 0.3, 0.2, 0.1]),
+        ("Comfy socks", vec![0.3f32, 0.3, 0.3, 0.3, 0.3]),
+        ("Tracatron-3000", vec![0.9f32, 0.1, 0.1, 0.1, 0.1]), // Mostly pointing to axis of first dimension
+        ("Tracatron-2000", vec![0.9f32, 0.3, 0.3, 0.3, 0.4]),
+    ];
+    let mut stmt = connection.statement(sql_insert_vec).build()?;
+    for pair in vec_data {
+        let vector_str = format!("{:?}", pair.1);
+        stmt.execute(&[&pair.0, &vector_str])?;
+    }
+    connection.commit()?;
+
+    let sql_query_vec = "SELECT prod_desc FROM embeddings \
+                       ORDER BY VECTOR_DISTANCE(emb_vector, :1) \
+                       FETCH FIRST 3 ROWS ONLY";
+    let vector = vec![0.8f32, 0.1, 0.2, 0.1, 0.1];
+    let vector_str = format!("{vector:?}");
+    println!("Similar products to vector: '{vector_str}'");
+    let mut stmt = connection.statement(sql_query_vec).build()?;
+    for row in stmt.query(&[&vector_str])? {
+        let row = row?;
+        let product_name: String = row.get(0)?;
+        println!("- {product_name}");
+    }
+
     println!("Droping embeddings table.");
     let ddl_drop_table = "DROP TABLE embeddings";
     let mut stmt = connection.statement(ddl_drop_table).build()?;
