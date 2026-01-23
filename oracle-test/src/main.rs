@@ -116,6 +116,11 @@ fn main() -> Result<(), anyhow::Error> {
     let mut stmt = connection.statement(ddl_create_idx).build()?;
     stmt.execute(&[])?;
 
+    println!("Droping embeddings table.");
+    let ddl_drop_table = "DROP TABLE embeddings";
+    let mut stmt = connection.statement(ddl_drop_table).build()?;
+    stmt.execute(&[])?;
+
     Ok(())
 }
 
