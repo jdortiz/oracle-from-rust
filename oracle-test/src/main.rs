@@ -1,4 +1,4 @@
-use oracle::{Connection, Statement, sql_type::Timestamp};
+use oracle::{Connection, Connector, Privilege, Statement, sql_type::Timestamp};
 
 fn main() -> Result<(), anyhow::Error> {
     const MAX_ROWS: usize = 20;
@@ -85,6 +85,19 @@ fn main() -> Result<(), anyhow::Error> {
     let mut stmt = connection.statement(sql_delete).build()?;
     stmt.execute(&[&new_product_id])?;
     connection.commit()?;
+
+    {
+        let connection = Connector::new("sys", "0pen-S3sam3.", "localhost:1521/FREEPDB1")
+            .privilege(Privilege::Sysdba)
+            .connect()?;
+
+        let row = connection.query_row(
+            "SELECT value FROM v$parameter WHERE name = 'vector_memory_size'",
+            &[],
+        )?;
+        let value: i32 = row.get(0)?;
+        println!("\nvector_memory_size: {value}");
+    }
 
     Ok(())
 }
