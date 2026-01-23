@@ -67,6 +67,25 @@ fn main() -> Result<(), anyhow::Error> {
         println!("{order_id} - {timestamp}");
     }
 
+    let sql_insert = "INSERT INTO products \
+                  (product_name, unit_price) \
+                  VALUES (:name, :price) \
+                  RETURNING product_id into :id";
+    let mut stmt = connection.statement(sql_insert).build()?;
+    stmt.execute_named(&[
+        ("name", &"Tracatron-3000"),
+        ("price", &9.88),
+        ("id", &None::<i32>),
+    ])?;
+    let new_product_id: i32 = stmt.returned_values("id")?[0];
+    println!("\nNew product {new_product_id} created");
+    connection.commit()?;
+
+    let sql_delete = "DELETE FROM products where product_id = :1";
+    let mut stmt = connection.statement(sql_delete).build()?;
+    stmt.execute(&[&new_product_id])?;
+    connection.commit()?;
+
     Ok(())
 }
 
