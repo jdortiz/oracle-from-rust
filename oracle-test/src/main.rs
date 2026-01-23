@@ -1,4 +1,4 @@
-use oracle::{Connection, Statement, sql_type::Timestamp};
+use oracle::{Connection, Connector, Privilege, Statement, sql_type::Timestamp};
 
 fn main() -> Result<(), anyhow::Error> {
     const MAX_ROWS: usize = 20;
@@ -85,6 +85,41 @@ fn main() -> Result<(), anyhow::Error> {
     let mut stmt = connection.statement(sql_delete).build()?;
     stmt.execute(&[&new_product_id])?;
     connection.commit()?;
+
+    {
+        let connection = Connector::new("sys", "0pen-S3sam3.", "localhost:1521/FREEPDB1")
+            .privilege(Privilege::Sysdba)
+            .connect()?;
+
+        let row = connection.query_row(
+            "SELECT value FROM v$parameter WHERE name = 'vector_memory_size'",
+            &[],
+        )?;
+        let value: i32 = row.get(0)?;
+        println!("\nvector_memory_size: {value}");
+    }
+
+    println!("\nCreating embeddings table.");
+    let ddl_create_table = "CREATE TABLE embeddings (\
+                          item_id NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1000 INCREMENT BY 1) PRIMARY KEY, \
+                          prod_desc VARCHAR2(100), \
+                          emb_vector VECTOR(5, FLOAT32)\
+                          )";
+    let mut stmt = connection.statement(ddl_create_table).build()?;
+    stmt.execute(&[])?;
+    println!("Creating embeddings index.");
+    let ddl_create_idx = "CREATE VECTOR INDEX embeddings_vector_index \
+                        ON embeddings (emb_vector) \
+                        ORGANIZATION INMEMORY NEIGHBOR GRAPH \
+                        DISTANCE COSINE \
+                        WITH TARGET ACCURACY 95";
+    let mut stmt = connection.statement(ddl_create_idx).build()?;
+    stmt.execute(&[])?;
+
+    println!("Droping embeddings table.");
+    let ddl_drop_table = "DROP TABLE embeddings";
+    let mut stmt = connection.statement(ddl_drop_table).build()?;
+    stmt.execute(&[])?;
 
     Ok(())
 }
