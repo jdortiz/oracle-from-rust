@@ -88,6 +88,28 @@ async fn main() -> Result<(), anyhow::Error> {
         i += 1;
     }
 
+    let sql_insert = "INSERT INTO co.products \
+                  (product_name, unit_price) \
+                  VALUES (:name, :price) \
+                  RETURNING product_id into :id";
+    let stmt = session.prepare(sql_insert).await?;
+    let mut new_product_id: i32 = 0;
+    let inserted_products = stmt
+        .execute((
+            (":name", "Tracatron-3000"),
+            (":price", 9.88),
+            (":id", &mut new_product_id),
+        ))
+        .await?;
+    session.commit().await?;
+    println!("\n{inserted_products} new product: {new_product_id} created.");
+
+    let sql_delete = "DELETE FROM products where product_id = :1";
+    let stmt = session.prepare(sql_delete).await?;
+    let deleted_products = stmt.execute(new_product_id).await?;
+    session.commit().await?;
+    println!("{deleted_products} product deleted.");
+
     Ok(())
 }
 
