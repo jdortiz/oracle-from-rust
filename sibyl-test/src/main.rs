@@ -110,6 +110,43 @@ async fn main() -> Result<(), anyhow::Error> {
     session.commit().await?;
     println!("{deleted_products} product deleted.");
 
+    {
+        let session = sibyl_env
+            .connect_as_sysdba("localhost:1521/FREEPDB1", "sys", "0pen-S3sam3.")
+            .await?;
+
+        let stmt = session
+            .prepare("SELECT value FROM v$parameter WHERE name = 'vector_memory_size'")
+            .await?;
+        if let Some(row) = stmt.query_single(()).await? {
+            let value: String = row.get(0)?;
+            println!("\nvector_memory_size: {value}");
+        }
+    }
+
+    println!("\nCreating embeddings table.");
+    let ddl_create_table = "CREATE TABLE embeddings (\
+                          item_id NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1000 INCREMENT BY 1) PRIMARY KEY, \
+                          prod_desc VARCHAR2(100), \
+                          emb_vector VECTOR(5, FLOAT32)\
+                          )";
+    let stmt = session.prepare(ddl_create_table).await?;
+    stmt.execute(()).await?;
+
+    println!("Creating embeddings index.");
+    let ddl_create_idx = "CREATE VECTOR INDEX embeddings_vector_index \
+                        ON embeddings (emb_vector) \
+                        ORGANIZATION INMEMORY NEIGHBOR GRAPH \
+                        DISTANCE COSINE \
+                        WITH TARGET ACCURACY 95";
+    let stmt = session.prepare(ddl_create_idx).await?;
+    stmt.execute(()).await?;
+
+    println!("Droping embeddings table.");
+    let ddl_drop_table = "DROP TABLE embeddings";
+    let stmt = session.prepare(ddl_drop_table).await?;
+    stmt.execute(()).await?;
+
     Ok(())
 }
 
