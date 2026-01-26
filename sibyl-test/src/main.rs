@@ -104,6 +104,12 @@ async fn main() -> Result<(), anyhow::Error> {
     session.commit().await?;
     println!("\n{inserted_products} new product: {new_product_id} created.");
 
+    let sql_delete = "DELETE FROM products where product_id = :1";
+    let stmt = session.prepare(sql_delete).await?;
+    let deleted_products = stmt.execute(new_product_id).await?;
+    session.commit().await?;
+    println!("{deleted_products} product deleted.");
+
     Ok(())
 }
 
