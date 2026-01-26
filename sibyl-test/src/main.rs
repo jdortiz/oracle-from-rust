@@ -124,6 +124,24 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     }
 
+    println!("\nCreating embeddings table.");
+    let ddl_create_table = "CREATE TABLE embeddings (\
+                          item_id NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1000 INCREMENT BY 1) PRIMARY KEY, \
+                          prod_desc VARCHAR2(100), \
+                          emb_vector VECTOR(5, FLOAT32)\
+                          )";
+    let stmt = session.prepare(ddl_create_table).await?;
+    stmt.execute(()).await?;
+
+    println!("Creating embeddings index.");
+    let ddl_create_idx = "CREATE VECTOR INDEX embeddings_vector_index \
+                        ON embeddings (emb_vector) \
+                        ORGANIZATION INMEMORY NEIGHBOR GRAPH \
+                        DISTANCE COSINE \
+                        WITH TARGET ACCURACY 95";
+    let stmt = session.prepare(ddl_create_idx).await?;
+    stmt.execute(()).await?;
+
     Ok(())
 }
 
