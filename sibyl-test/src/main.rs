@@ -142,6 +142,11 @@ async fn main() -> Result<(), anyhow::Error> {
     let stmt = session.prepare(ddl_create_idx).await?;
     stmt.execute(()).await?;
 
+    println!("Droping embeddings table.");
+    let ddl_drop_table = "DROP TABLE embeddings";
+    let stmt = session.prepare(ddl_drop_table).await?;
+    stmt.execute(()).await?;
+
     Ok(())
 }
 
