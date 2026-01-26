@@ -110,6 +110,20 @@ async fn main() -> Result<(), anyhow::Error> {
     session.commit().await?;
     println!("{deleted_products} product deleted.");
 
+    {
+        let session = sibyl_env
+            .connect_as_sysdba("localhost:1521/FREEPDB1", "sys", "0pen-S3sam3.")
+            .await?;
+
+        let stmt = session
+            .prepare("SELECT value FROM v$parameter WHERE name = 'vector_memory_size'")
+            .await?;
+        if let Some(row) = stmt.query_single(()).await? {
+            let value: String = row.get(0)?;
+            println!("\nvector_memory_size: {value}");
+        }
+    }
+
     Ok(())
 }
 
